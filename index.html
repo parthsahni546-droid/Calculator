@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parth's Calculator</title>
+<meta name="theme-color" content="#0A0A0C">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#0A0A0C;--key:#18181D;--key2:#222229;--gold:#D9B97A;--gold2:#B8975A;--ivory:#F4EFE6;--mute:#8A8578}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--ivory);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);max-width:480px;margin:0 auto}
+.screen{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-end;padding:24px 8px 20px;min-height:0}
+.expr{font-size:22px;color:var(--mute);min-height:30px;letter-spacing:.02em;font-variant-numeric:tabular-nums;word-break:break-all;text-align:right}
+.val{font-size:76px;font-weight:200;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--ivory);word-break:break-all;text-align:right;transition:font-size .15s}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+button{border:0;border-radius:50%;aspect-ratio:1;font-size:32px;font-weight:300;color:var(--ivory);background:var(--key);font-family:inherit;cursor:pointer;transition:transform .08s,background .15s;display:flex;align-items:center;justify-content:center}
+button:active{transform:scale(.93);background:var(--key2)}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.fn{color:var(--gold);background:#141418;box-shadow:inset 0 0 0 1px #2A2620}
+.op{background:linear-gradient(145deg,var(--gold),var(--gold2));color:#1A1408;font-weight:400}
+.op.on{background:var(--ivory)}
+.zero{grid-column:span 2;aspect-ratio:auto;border-radius:999px;justify-content:flex-start;padding-left:34px}
+@media (max-height:700px){.val{font-size:60px}button{font-size:26px}}
+</style>
+</head>
+<body>
+<div class="screen"><div class="expr" id="expr"></div><div class="val" id="val">0</div></div>
+<div class="pad" id="pad">
+<button class="fn" data-a="ac" id="acb">AC</button>
+<button class="fn" data-a="neg">±</button>
+<button class="fn" data-a="pct">%</button>
+<button class="op" data-o="/">÷</button>
+<button data-n="7">7</button><button data-n="8">8</button><button data-n="9">9</button>
+<button class="op" data-o="*">×</button>
+<button data-n="4">4</button><button data-n="5">5</button><button data-n="6">6</button>
+<button class="op" data-o="-">−</button>
+<button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button>
+<button class="op" data-o="+">+</button>
+<button class="zero" data-n="0">0</button>
+<button data-n=".">.</button>
+<button class="op" data-a="eq">=</button>
+</div>
+<script>
+let cur="0",prev=null,op=null,fresh=false,done=false;
+const S={"/":"÷","*":"×","-":"−","+":"+"};
+const val=document.getElementById("val"),expr=document.getElementById("expr"),acb=document.getElementById("acb");
+function fmt(s){if(s==="Error")return s;let[n,d]=s.split(".");const neg=n[0]==="-";if(neg)n=n.slice(1);n=n.replace(/\B(?=(\d{3})+(?!\d))/g,",");return(neg?"-":"")+n+(d!==undefined?"."+d:"")}
+function render(){val.textContent=fmt(cur);const l=val.textContent.length;val.style.fontSize=l>14?"34px":l>11?"46px":l>8?"58px":"";expr.textContent=prev!==null&&op?fmt(prev)+" "+S[op]+(fresh?"":" "+fmt(cur)):"";acb.textContent=(cur==="0"&&prev===null)?"AC":"C";document.querySelectorAll(".op[data-o]").forEach(b=>b.classList.toggle("on",fresh&&b.dataset.o===op))}
+function calc(a,b,o){a=parseFloat(a);b=parseFloat(b);let r=o==="+"?a+b:o==="-"?a-b:o==="*"?a*b:(b===0?NaN:a/b);if(!isFinite(r))return"Error";return String(parseFloat(r.toPrecision(12)))}
+function num(n){if(cur==="Error"){cur="0"}if(fresh||done){cur="0";fresh=false;if(done){prev=null;op=null;done=false}}if(n==="."){if(cur.includes("."))return;cur+="."}else if(cur==="0")cur=n;else if(cur.replace(/[-.]/g,"").length<12)cur+=n;render()}
+function oper(o){if(cur==="Error")return;if(op&&!fresh&&prev!==null){cur=calc(prev,cur,op);if(cur==="Error"){prev=null;op=null;render();return}}prev=cur;op=o;fresh=true;done=false;render()}
+function act(a){if(a==="ac"){cur="0";if(acb.textContent==="AC"){prev=null;op=null}fresh=false;done=false}
+else if(a==="neg"&&cur!=="Error"&&cur!=="0")cur=cur[0]==="-"?cur.slice(1):"-"+cur;
+else if(a==="pct"&&cur!=="Error")cur=String(parseFloat((parseFloat(cur)/100).toPrecision(12)));
+else if(a==="eq"&&op&&prev!==null){const p=prev,o=op,c=cur;cur=calc(p,c,o);expr.textContent=fmt(p)+" "+S[o]+" "+fmt(c)+" =";val.textContent=fmt(cur);prev=null;op=null;done=true;fresh=false;const l=val.textContent.length;val.style.fontSize=l>14?"34px":l>11?"46px":l>8?"58px":"";acb.textContent="AC";return}
+render()}
+document.getElementById("pad").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(navigator.vibrate)navigator.vibrate(8);if(b.dataset.n!==undefined)num(b.dataset.n);else if(b.dataset.o)oper(b.dataset.o);else act(b.dataset.a)});
+document.addEventListener("keydown",e=>{const k=e.key;if(/\d|\./.test(k))num(k);else if("+-*/".includes(k))oper(k);else if(k==="Enter"||k==="=")act("eq");else if(k==="Escape")act("ac");else if(k==="Backspace"&&!fresh&&!done&&cur.length>0&&cur!=="Error"){cur=cur.length>1&&cur!=="-0"?cur.slice(0,-1):"0";if(cur==="-")cur="0";render()}});
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+render();
+</script>
+</body>
+</html>
